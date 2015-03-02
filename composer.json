@@ -1,0 +1,10 @@
+{
+  "name":         "riverline/loop-command",
+  "description":  "Base code to create 'loop commands'",
+  "type":         "library",
+  "autoload": {
+    "psr-0": {
+      "Riverline\\LoopCommand": "src/"
+    }
+  }
+}
