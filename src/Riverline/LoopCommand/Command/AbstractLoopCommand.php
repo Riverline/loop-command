@@ -5,13 +5,12 @@ namespace Riverline\LoopCommand\Command;
 use Riverline\LoopCommand\Context\ArrayContext;
 use Riverline\LoopCommand\Context\LoopCommandContextInterface;
 use Riverline\LoopCommand\Exception\LoopCommandFinishedException;
-use \Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Helper\DialogHelper;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\FormatterHelper;
-use \Symfony\Component\DependencyInjection\ContainerAwareInterface;
-use \Symfony\Component\Console\Input\InputInterface;
-use \Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\Console\Helper\QuestionHelper;
+use Symfony\Component\Console\Question\Question;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Class AbstractLoopCommand
@@ -34,7 +33,7 @@ abstract class AbstractLoopCommand extends Command
     private $output;
 
     /**
-     * @var DialogHelper
+     * @var QuestionHelper
      */
     private $dialog;
 
@@ -74,37 +73,34 @@ abstract class AbstractLoopCommand extends Command
                 // sub exception catching to display error without giving up context changes
                 try {
                     // Do not display available commands
-                    $commandToExecute = $this->dialog->askAndValidate(
-                        $output,
-                        'loop > ',
-                        function ($answer) use ($that) {
-                            // command accepts arguments, lets explode it and keep the trailing args in a simple string
-                            $allArgs = explode(' ', $answer, 2);
-                            if (empty($allArgs[0])) {
-                                return array();
-                            } elseif (array_key_exists($allArgs[0], $this->commands)) {
-                                $command = array_shift($allArgs);
-                                $arguments = (!empty($allArgs) ? $allArgs[0] : null);
+                    $question = new Question('loop >');
+                    $question->setValidator(function ($answer) use ($that) {
+                        // command accepts arguments, lets explode it and keep the trailing args in a simple string
+                        $allArgs = explode(' ', $answer, 2);
+                        if (empty($allArgs[0])) {
+                            return array();
+                        } elseif (array_key_exists($allArgs[0], $this->commands)) {
+                            $command = array_shift($allArgs);
+                            $arguments = (!empty($allArgs) ? $allArgs[0] : null);
 
-                                // check if args are required, optional, or shouldn't exist
-                                if (empty($arguments) && $this->commands[$command]['mode'] == self::COMMAND_VALUE_REQUIRED) {
-                                    throw new \RuntimeException('The command "'.$command.'" needs one or many arguments, nothing given.');
-                                } elseif (!empty($arguments) && $this->commands[$command]['mode'] == self::COMMAND_VALUE_NONE) {
-                                    throw new \RuntimeException('The command "'.$command.'" doesn\'t accept arguments, "'.$arguments.'" given.');
-                                }
-
-                                return array(
-                                    'command'   => $command,
-                                    'arguments' => $arguments
-                                );
-                            } else {
-                                throw new \RuntimeException('Unknown command');
+                            // check if args are required, optional, or shouldn't exist
+                            if (empty($arguments) && $this->commands[$command]['mode'] == self::COMMAND_VALUE_REQUIRED) {
+                                throw new \RuntimeException('The command "'.$command.'" needs one or many arguments, nothing given.');
+                            } elseif (!empty($arguments) && $this->commands[$command]['mode'] == self::COMMAND_VALUE_NONE) {
+                                throw new \RuntimeException('The command "'.$command.'" doesn\'t accept arguments, "'.$arguments.'" given.');
                             }
-                        },
-                        false,
-                        null,
-                        array_keys($that->commands)
-                    );
+
+                            return array(
+                                'command'   => $command,
+                                'arguments' => $arguments
+                            );
+                        } else {
+                            throw new \RuntimeException('Unknown command');
+                        }
+                    });
+                    $question->setAutocompleterValues(array_keys($that->commands));
+
+                    $commandToExecute = $this->dialog->ask($input, $output, $question);
 
                     if (!empty($commandToExecute)) {
                         call_user_func_array(
@@ -137,7 +133,7 @@ abstract class AbstractLoopCommand extends Command
     {
         $this->input        = $input;
         $this->output       = $output;
-        $this->dialog       = $this->getHelperSet()->get('dialog');
+        $this->dialog       = $this->getHelperSet()->get('question');
         $this->context      = $this->getNewContext();
 
         $this->initializeLoop($input, $output, $this->dialog, $this->context);
@@ -161,10 +157,10 @@ abstract class AbstractLoopCommand extends Command
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param DialogHelper $dialog
+     * @param QuestionHelper $dialog
      * @param LoopCommandContextInterface $context
      */
-    abstract protected function initializeLoop(InputInterface $input, OutputInterface $output, DialogHelper $dialog, LoopCommandContextInterface $context);
+    abstract protected function initializeLoop(InputInterface $input, OutputInterface $output, QuestionHelper $dialog, LoopCommandContextInterface $context);
 
     /**
      * @param string $name
@@ -187,10 +183,10 @@ abstract class AbstractLoopCommand extends Command
     /**
      * @param InputInterface              $input
      * @param OutputInterface             $output
-     * @param DialogHelper                $dialog
+     * @param QuestionHelper                $dialog
      * @param LoopCommandContextInterface $context
      */
-    protected function doHelp (InputInterface $input, OutputInterface $output, DialogHelper $dialog, LoopCommandContextInterface $context)
+    protected function doHelp (InputInterface $input, OutputInterface $output, QuestionHelper $dialog, LoopCommandContextInterface $context)
     {
         $tabLength = 8;
         $maxTabs = 3;
@@ -205,11 +201,11 @@ abstract class AbstractLoopCommand extends Command
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param DialogHelper $dialog
+     * @param QuestionHelper $dialog
      * @param LoopCommandContextInterface $context
      * @throws LoopCommandFinishedException
      */
-    protected function doQuit(InputInterface $input, OutputInterface $output, DialogHelper $dialog, LoopCommandContextInterface $context)
+    protected function doQuit(InputInterface $input, OutputInterface $output, QuestionHelper $dialog, LoopCommandContextInterface $context)
     {
         throw new LoopCommandFinishedException();
     }

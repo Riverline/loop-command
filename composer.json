@@ -1,10 +1,13 @@
 {
-  "name":         "riverline/loop-command",
-  "description":  "Base code to create 'loop commands'",
-  "type":         "library",
+  "name": "riverline/loop-command",
+  "description": "Base code to create 'loop commands'",
+  "type": "library",
   "autoload": {
     "psr-0": {
       "Riverline\\LoopCommand": "src/"
     }
+  },
+  "require": {
+     "symfony/console": "^2.8 || ^3.4 || ^4.0"
   }
 }
